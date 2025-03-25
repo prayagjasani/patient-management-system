@@ -72,7 +72,8 @@
         "publish": [{
             "provider": "github",
             "owner": "prayagjasani",
-            "repo": "patient-management-system"
+            "repo": "patient-management-system",
+            "releaseType": "release"
         }],
         "files": [
             "**/*",

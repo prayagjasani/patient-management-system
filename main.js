@@ -18,6 +18,14 @@ autoUpdater.logger = require('electron-log');
 autoUpdater.logger.transports.file.level = 'info';
 autoUpdater.autoDownload = false;
 
+// Set the GitHub repository for auto-updates
+autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'prayagjasani',
+    repo: 'patient-management-system',
+    releaseType: 'release'
+});
+
 // Find an available port
 function findAvailablePort(startPort) {
     return new Promise((resolve, reject) => {
