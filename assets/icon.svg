@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background -->
+    <rect width="256" height="256" rx="48" fill="#4CAF50"/>
+    
+    <!-- Medical Cross -->
+    <path d="M128 64v128M64 128h128" 
+          stroke="white" 
+          stroke-width="32" 
+          stroke-linecap="round"/>
+    
+    <!-- Heart -->
+    <path d="M128 160c-20-20-40-40-40-60a20 20 0 0 1 40 0 20 20 0 0 1 40 0c0 20-20 40-40 60z" 
+          fill="white" 
+          opacity="0.8"/>
+</svg> 
