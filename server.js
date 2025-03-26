@@ -37,7 +37,7 @@ function initializeDatabase() {
             }
             console.log('Connected to MySQL database');
 
-            // Create table if it doesn't exist
+            // Create table if it doesn't exist - removed last_visit_date field
             const createTableQuery = `
             CREATE TABLE IF NOT EXISTS patients (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -46,7 +46,6 @@ function initializeDatabase() {
                 contact_number VARCHAR(15),
                 medical_history TEXT,
                 treatment_notes TEXT,
-                last_visit_date DATETIME,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )`;
 
@@ -73,10 +72,9 @@ initializeDatabase().catch(err => {
 app.get("/", (req, res) => {
     const query = `
         SELECT *, 
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date,
-        DATE_FORMAT(last_visit_date, '%Y-%m-%d %H:%i') as formatted_last_visit_date 
+        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date
         FROM patients 
-        ORDER BY last_name ASC`;
+        ORDER BY created_at DESC`; // Removed last_visit_date field
 
     db.query(query, (err, results) => {
         if (err) {
@@ -92,13 +90,10 @@ app.get("/", (req, res) => {
 app.post("/add", (req, res) => {
     const { first_name, last_name, contact_number, medical_history, treatment_notes } = req.body;
 
-    // Use current date and time for last visit
-    const now = new Date();
-    const last_visit_date = now.toISOString().slice(0, 19).replace('T', ' ');
+    // Removed last_visit_date
+    const query = "INSERT INTO patients (first_name, last_name, contact_number, medical_history, treatment_notes) VALUES (?, ?, ?, ?, ?)";
 
-    const query = "INSERT INTO patients (first_name, last_name, contact_number, medical_history, treatment_notes, last_visit_date) VALUES (?, ?, ?, ?, ?, ?)";
-
-    db.query(query, [first_name, last_name, contact_number, medical_history, treatment_notes, last_visit_date], (err, result) => {
+    db.query(query, [first_name, last_name, contact_number, medical_history, treatment_notes], (err, result) => {
         if (err) {
             console.error('Error adding patient:', err);
             res.status(500).send('Error adding patient');
@@ -116,10 +111,10 @@ app.post("/delete/:id", (req, res) => {
     db.query(query, [patientId], (err, result) => {
         if (err) {
             console.error('Error deleting patient:', err);
-            res.status(500).send('Error deleting patient');
-            return;
+            return res.status(500).json({ success: false, message: 'Error deleting patient' });
         }
-        res.redirect("/records");
+
+        return res.json({ success: true, message: 'Patient deleted successfully' });
     });
 });
 
@@ -129,12 +124,11 @@ app.get("/search", (req, res) => {
 });
 
 app.post("/search", (req, res) => {
-    const { search_term, visit_date } = req.body;
+    const { search_term } = req.body; // Removed visit_date
     let query = `
         SELECT *, 
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date,
-        DATE_FORMAT(last_visit_date, '%Y-%m-%d %H:%i') as formatted_last_visit_date 
-        FROM patients WHERE 1=1`;
+        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date
+        FROM patients WHERE 1=1`; // Removed last_visit_date
     const params = [];
 
     if (search_term && search_term.trim() !== '') {
@@ -144,12 +138,9 @@ app.post("/search", (req, res) => {
         params.push(`%${search_term}%`);
     }
 
-    if (visit_date) {
-        query += " AND DATE(last_visit_date) = ?";
-        params.push(visit_date);
-    }
+    // Removed visit_date filter
 
-    query += " ORDER BY last_name ASC";
+    query += " ORDER BY created_at DESC";
 
     db.query(query, params, (err, results) => {
         if (err) {
@@ -165,10 +156,9 @@ app.post("/search", (req, res) => {
 app.get("/records", (req, res) => {
     const query = `
         SELECT *, 
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date,
-        DATE_FORMAT(last_visit_date, '%Y-%m-%d %H:%i') as formatted_last_visit_date 
+        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date
         FROM patients 
-        ORDER BY last_name ASC`;
+        ORDER BY created_at DESC`; // Removed last_visit_date
 
     db.query(query, (err, results) => {
         if (err) {

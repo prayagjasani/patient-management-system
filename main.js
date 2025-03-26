@@ -3,6 +3,7 @@ const path = require('path');
 const express = require('./server');
 const net = require('net');
 const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
 
 // Set NODE_ENV
 process.env.NODE_ENV = app.isPackaged ? 'production' : 'development';
@@ -13,17 +14,25 @@ let tray = null;
 let forceClose = false;
 let appPort = 3000; // Default port
 
+// Configure logging
+log.transports.file.level = 'info';
+log.info('Application starting...');
+
 // Configure auto updater
-autoUpdater.logger = require('electron-log');
-autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'debug'; // More detailed logging
 autoUpdater.autoDownload = false;
+autoUpdater.allowDowngrade = false;
+autoUpdater.allowPrerelease = false;
 
 // Set the GitHub repository for auto-updates
 autoUpdater.setFeedURL({
     provider: 'github',
     owner: 'prayagjasani',
     repo: 'patient-management-system',
-    releaseType: 'release'
+    releaseType: 'release',
+    private: false,
+    vPrefixedTagName: true
 });
 
 // Find an available port
@@ -135,7 +144,7 @@ async function createWindow() {
                             // Show about dialog
                             dialog.showMessageBox({
                                 title: 'About Patient Management System',
-                                message: `Patient Management System v${app.getVersion()}\n\nA desktop application for managing patient records.`,
+                                message: `Patient Management System v1.2.0\n\nA desktop application for managing patient records.`,
                                 buttons: ['OK']
                             });
                         }
@@ -237,6 +246,13 @@ async function createWindow() {
                 mainWindow.show();
             });
         }
+
+        // Setup auto-updater
+        log.info(`Patient Management System v${app.getVersion()}`);
+        log.info('Setting up auto updater...');
+
+        // Check for updates
+        autoUpdater.checkForUpdatesAndNotify();
     } catch (error) {
         console.error('Error during startup:', error);
         dialog.showErrorBox(
@@ -269,56 +285,42 @@ function checkForUpdates() {
         return;
     }
 
-    autoUpdater.checkForUpdates();
+    autoUpdater.checkForUpdates().catch(err => {
+        console.error('Error checking for updates:', err);
+        dialog.showErrorBox(
+            'Update Error',
+            `An error occurred while checking for updates: ${err.message}`
+        );
+    });
 }
 
-// Setup auto-updater events
-autoUpdater.on('update-available', (info) => {
-    dialog.showMessageBox({
-        type: 'info',
-        title: 'Update Available',
-        message: `A new version (${info.version}) is available. Would you like to download it now?`,
-        buttons: ['Yes', 'No'],
-        defaultId: 0
-    }).then(({ response }) => {
-        if (response === 0) {
-            autoUpdater.downloadUpdate();
-        }
-    });
+// Auto-updater events
+autoUpdater.on('checking-for-update', () => {
+    log.info('Checking for updates...');
 });
 
-autoUpdater.on('update-not-available', () => {
-    dialog.showMessageBox({
-        title: 'No Updates',
-        message: 'You are running the latest version of the application.',
-        buttons: ['OK']
-    });
+autoUpdater.on('update-available', (info) => {
+    log.info('Update available:', info);
+});
+
+autoUpdater.on('update-not-available', (info) => {
+    log.info('Update not available:', info);
 });
 
 autoUpdater.on('error', (err) => {
-    dialog.showErrorBox(
-        'Update Error',
-        `An error occurred while checking for updates: ${err.message}`
-    );
+    log.error('Error in auto-updater:', err);
 });
 
 autoUpdater.on('download-progress', (progressObj) => {
-    let message = `Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}% (${progressObj.transferred}/${progressObj.total})`;
-    console.log(message);
-    // You could show a progress bar here if desired
+    let log_message = `Download speed: ${progressObj.bytesPerSecond}`;
+    log_message = `${log_message} - Downloaded ${progressObj.percent}%`;
+    log_message = `${log_message} (${progressObj.transferred}/${progressObj.total})`;
+    log.info(log_message);
 });
 
 autoUpdater.on('update-downloaded', (info) => {
-    dialog.showMessageBox({
-        title: 'Update Ready',
-        message: 'Update downloaded. The application will restart to install the update.',
-        buttons: ['Install now', 'Install later'],
-        defaultId: 0
-    }).then(({ response }) => {
-        if (response === 0) {
-            autoUpdater.quitAndInstall(false, true);
-        }
-    });
+    log.info('Update downloaded:', info);
+    autoUpdater.quitAndInstall();
 });
 
 // Create window when app is ready
