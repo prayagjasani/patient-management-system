@@ -150,7 +150,7 @@ async function createWindow() {
                             // Show about dialog
                             dialog.showMessageBox({
                                 title: 'About Patient Management System',
-                                message: `Patient Management System v1.2.0\n\nA desktop application for managing patient records.`,
+                                message: `Patient Management System v1.3.0\n\nA desktop application for managing patient records.`,
                                 buttons: ['OK']
                             });
                         }
