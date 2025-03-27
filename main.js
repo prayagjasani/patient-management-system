@@ -1,12 +1,18 @@
 const { app, BrowserWindow, ipcMain, Menu, Tray, dialog } = require('electron');
 const path = require('path');
+
+// Set NODE_ENV
+process.env.NODE_ENV = app.isPackaged ? 'production' : 'development';
+
+// Set resource path for Express to find views and static files
+process.resourcesPath = app.isPackaged ?
+    process.resourcesPath :
+    path.join(__dirname);
+
 const express = require('./server');
 const net = require('net');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
-
-// Set NODE_ENV
-process.env.NODE_ENV = app.isPackaged ? 'production' : 'development';
 
 let mainWindow;
 let server;

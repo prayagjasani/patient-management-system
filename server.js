@@ -5,25 +5,64 @@ const aiUtils = require('./utils/aiUtils');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 
+// Get resource path safely for Electron environments
+const getResourcePath = () => {
+    if (process && process.resourcesPath) {
+        console.log('Using resourcesPath:', process.resourcesPath);
+        return process.resourcesPath;
+    }
+    console.log('Falling back to __dirname:', __dirname);
+    return __dirname;
+};
+
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // Set static files directory based on environment
-const publicPath = isDev ? 'public' : path.join(process.resourcesPath, 'public');
+const publicPath = isDev ? path.join(__dirname, 'public') : path.join(getResourcePath(), 'public');
 app.use(express.static(publicPath));
 
 // Set views directory based on environment
-const viewsPath = isDev ? 'views' : path.join(process.resourcesPath, 'views');
+const viewsPath = isDev ? path.join(__dirname, 'views') : path.join(getResourcePath(), 'views');
+console.log('Setting views directory to:', viewsPath);
 app.set("views", viewsPath);
 app.set("view engine", "ejs");
 
-// Database connection
+// For debugging - log all environment variables
+console.log('Environment:', {
+    NODE_ENV: process.env.NODE_ENV,
+    isDev: isDev,
+    __dirname: __dirname,
+    viewsPath: viewsPath,
+    publicPath: publicPath
+});
+
+// Database connection using environment variables or defaults
 const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "Prayag@2oo4.",
-    database: "mydatabase"
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "DATABASE_PASSWORD_PLACEHOLDER", // Replace with env variable
+    database: process.env.DB_NAME || "mydatabase",
+    port: process.env.DB_PORT || 3306,
+    ...(process.env.DB_HOST && {
+        ssl: {
+            rejectUnauthorized: false
+        }
+    })
+});
+
+// Add specific error handling for database connection
+db.on('error', function(err) {
+    console.error('Database connection error:', err);
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+        console.log('Attempting to reconnect to database...');
+        initializeDatabase().catch(err => {
+            console.error('Failed to reconnect to database:', err);
+        });
+    } else {
+        console.error('Database error:', err);
+    }
 });
 
 // Initialize database and tables
@@ -37,7 +76,7 @@ function initializeDatabase() {
             }
             console.log('Connected to MySQL database');
 
-            // Create table if it doesn't exist - removed last_visit_date field
+            // Create table if it doesn't exist
             const createTableQuery = `
             CREATE TABLE IF NOT EXISTS patients (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -72,9 +111,9 @@ initializeDatabase().catch(err => {
 app.get("/", (req, res) => {
     const query = `
         SELECT *, 
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date
+        DATE_FORMAT(created_at, '%a, %M %d, %Y at %h:%i %p') as formatted_created_date
         FROM patients 
-        ORDER BY created_at DESC`; // Removed last_visit_date field
+        ORDER BY created_at DESC`;
 
     db.query(query, (err, results) => {
         if (err) {
@@ -90,10 +129,19 @@ app.get("/", (req, res) => {
 app.post("/add", (req, res) => {
     const { first_name, last_name, contact_number, medical_history, treatment_notes } = req.body;
 
-    // Removed last_visit_date
-    const query = "INSERT INTO patients (first_name, last_name, contact_number, medical_history, treatment_notes) VALUES (?, ?, ?, ?, ?)";
+    // Convert to Indian Standard Time (IST) - UTC+5:30
+    const now = new Date();
+    // Adjust to IST by adding 5 hours and 30 minutes
+    now.setHours(now.getHours() + 5);
+    now.setMinutes(now.getMinutes() + 30);
+    const istTimestamp = now.toISOString().slice(0, 19).replace('T', ' ');
 
-    db.query(query, [first_name, last_name, contact_number, medical_history, treatment_notes], (err, result) => {
+    console.log('Using Indian Standard Time (IST) timestamp:', istTimestamp);
+
+    // Include IST timestamp in the query
+    const query = "INSERT INTO patients (first_name, last_name, contact_number, medical_history, treatment_notes, created_at) VALUES (?, ?, ?, ?, ?, ?)";
+
+    db.query(query, [first_name, last_name, contact_number, medical_history, treatment_notes, istTimestamp], (err, result) => {
         if (err) {
             console.error('Error adding patient:', err);
             res.status(500).send('Error adding patient');
@@ -124,11 +172,11 @@ app.get("/search", (req, res) => {
 });
 
 app.post("/search", (req, res) => {
-    const { search_term } = req.body; // Removed visit_date
+    const { search_term } = req.body;
     let query = `
         SELECT *, 
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date
-        FROM patients WHERE 1=1`; // Removed last_visit_date
+        DATE_FORMAT(created_at, '%a, %M %d, %Y at %h:%i %p') as formatted_created_date
+        FROM patients WHERE 1=1`;
     const params = [];
 
     if (search_term && search_term.trim() !== '') {
@@ -137,8 +185,6 @@ app.post("/search", (req, res) => {
         params.push(`%${search_term}%`);
         params.push(`%${search_term}%`);
     }
-
-    // Removed visit_date filter
 
     query += " ORDER BY created_at DESC";
 
@@ -156,9 +202,9 @@ app.post("/search", (req, res) => {
 app.get("/records", (req, res) => {
     const query = `
         SELECT *, 
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as formatted_created_date
+        DATE_FORMAT(created_at, '%a, %M %d, %Y at %h:%i %p') as formatted_created_date
         FROM patients 
-        ORDER BY created_at DESC`; // Removed last_visit_date
+        ORDER BY created_at DESC`;
 
     db.query(query, (err, results) => {
         if (err) {

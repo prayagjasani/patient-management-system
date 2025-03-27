@@ -31,6 +31,10 @@
         .suggestion-container {
             position: relative;
         }
+        
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 
@@ -38,11 +42,18 @@
     <div class="container mt-5">
         <h1 class="mb-4">Patient Management System</h1>
 
-        <!-- Navigation -->
-        <div class="mb-4">
-            <a href="/search" class="btn btn-info me-2">Search Patients</a>
-            <a href="/records" class="btn btn-secondary">View All Records</a>
-        </div>
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link active" href="/">Home</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/search">Search Patients</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/records">View All Records</a>
+            </li>
+        </ul>
 
         <!-- Add Patient Form -->
         <div class="card mb-4">
